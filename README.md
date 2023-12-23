@@ -200,7 +200,7 @@ for x,y,z in zip(params,vector,hvp):
 print(x,y,z)
 ```
 
-## Hessian Matrix Diagonal term
+## 2. Hessian Matrix Diagonal term
 
 ```python
 import torch
