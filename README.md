@@ -1,7 +1,7 @@
-# Hessian
+# Autograd & Hessian 
 
-
-Autograd
+### pytorch Autograd Link
+https://pytorch.org/docs/stable/notes/autograd.html
 
 ```python
 w1 = nn.Linear(3,3)
