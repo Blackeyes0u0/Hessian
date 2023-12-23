@@ -130,3 +130,124 @@ third_derivative = torch.autograd.grad(second_derivative, x)[0]
 print(f"Third derivative at x={x}: {third_derivative}")
 ```
 
+# Hessian Matrix 
+
+## 1. Hessian 벡터 곱(Hessian-vector product)
+
+```python
+import torch
+
+def compute_hvp(loss, parameters, vector): # parameters : List(torch.Tensor)
+    # 첫 번째 그래디언트 계산
+    grads = torch.autograd.grad(loss, parameters, create_graph=True)
+    
+    # grads와 vector의 내적 계산
+    grad_vector_product = sum(torch.sum(g * v) for g, v in zip(grads, vector))
+
+    # 내적에 대한 그래디언트 계산 (Hessian 벡터 곱)
+    hvp = torch.autograd.grad(grad_vector_product, parameters)
+    
+    return [v.detach() for v in hvp]
+
+# 예시: 모델과 데이터
+def target_function(x):
+    return 2 * x + 3 + np.sin(x) * 3 * np.sqrt(abs(x)) + np.cos(x + 3)
+
+# 신경망 모델 정의
+class SimpleNet(nn.Module):
+    def __init__(self):
+        super(SimpleNet, self).__init__()
+        self.linear = nn.Sequential(
+            nn.Linear(1, 10),
+            nn.Tanh(),
+            nn.Linear(10, 10),
+            nn.Tanh(),
+            nn.Linear(10, 1),
+        )
+
+    def forward(self, x):
+        return self.linear(x)
+
+# 모델 초기화
+model = SimpleNet()
+
+input_data = torch.linspace(-10, 10, 1000).view(-1, 1)
+target =  torch.tensor(target_function(input_data.numpy()), dtype=torch.float32).view(-1, 1)
+
+# 손실 계산
+output = model(input_data)
+loss = torch.nn.MSELoss()(output, target)
+
+
+params = list(model.parameters())
+
+vector = [torch.randn_like(p) for p in params]  # 랜덤 벡터
+hvp = compute_hvp(loss, params, vector)
+
+for x,y,z in zip(params,vector,hvp):
+    print(x.shape,y.shape,z.shape)
+print(x,y,z)
+```
+
+## Hessian Matrix Diagonal term
+
+```python
+import torch
+
+# 예시: 모델과 데이터
+def target_function(x):
+    return 2 * x + 3 + np.sin(x) * 3 * np.sqrt(abs(x)) + np.cos(x + 3)
+
+# 신경망 모델 정의
+class SimpleNet(nn.Module):
+    def __init__(self):
+        super(SimpleNet, self).__init__()
+        self.linear = nn.Sequential(
+            nn.Linear(1, 10),
+            nn.Tanh(),
+            nn.Linear(10, 10),
+            nn.Tanh(),
+            nn.Linear(10, 1),
+        )
+
+    def forward(self, x):
+        return self.linear(x)
+
+# 모델 초기화
+model = SimpleNet()
+
+input_data = torch.linspace(-10, 10, 1000).view(-1, 1)
+target =  torch.tensor(target_function(input_data.numpy()), dtype=torch.float32).view(-1, 1)
+
+# 손실 계산
+output = model(input_data)
+loss = torch.nn.MSELoss()(output, target)
+
+params = {}
+jacobian = {}
+hessian_digonal = {}
+
+    # please differentiate the jacobian
+    # jaco shoud be a scalar tensor
+    # fill the hessian_digonal
+
+
+for name, param in model.named_parameters():
+    params[name] = param
+    jaco = torch.autograd.grad(loss, param, create_graph=True)[0]
+    jacobian[name] = jaco
+
+    # Hessian Diagonal term
+    # Hessian 대각 성분 계산
+    hessian_diag = []
+    for j in jaco.view(-1):
+        # jaco는 텐서이므로, 각 요소에 대해 두 번째 미분을 계산
+        hess = torch.autograd.grad(j, param, retain_graph=True)[0]
+        hessian_diag.append(hess.view(-1))
+
+    # 대각 성분을 하나의 벡터로 결합
+    hessian_digonal[name] = torch.cat(hessian_diag)
+
+hessian_digonal
+```
+
