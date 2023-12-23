@@ -200,7 +200,7 @@ for x,y,z in zip(params,vector,hvp):
 print(x,y,z)
 ```
 
-## 2. Hessian Matrix Diagonal term
+## 2. Hessian Matrix Diagonal + Off Diagonal term
 
 ```python
 import torch
@@ -262,3 +262,29 @@ for name, param in model.named_parameters():
 hessian_digonal
 ```
 
+## 3. Diagonal term
+
+```python
+def compute_hessian_diag(loss, model):
+    hessian_diags = {}
+    for name, param in model.named_parameters():
+        if param.requires_grad:
+            # 첫 번째 미분(그래디언트) 계산
+            grad = torch.autograd.grad(loss, param, create_graph=True)[0]
+            hessian_diag = []
+            grad_value = grad.view(-1)
+            for i in range(param.numel()):
+                # 두 번째 미분 계산
+                hess = torch.autograd.grad(grad_value[i], param, retain_graph=True)[0]
+                hess = hess.view(-1)
+                hessian_diag.append(hess[i].item())
+            hessian_diags[name] = torch.tensor(hessian_diag)
+    return hessian_diags
+
+# Hessian 대각 성분 계산
+hessian_diags = compute_hessian_diag(loss, model)
+
+# # 결과 출력
+for name, hess_diag in hessian_diags.items():
+    print(f"{name}: {hess_diag}")
+```
