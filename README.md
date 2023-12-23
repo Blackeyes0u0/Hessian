@@ -26,13 +26,12 @@ o2.grad_fn.next_functions[1][0] is o1.grad_fn
 ```python
 import torch
 import torch.nn as nn
-import torch.optim as optim
-import matplotlib.pyplot as plt
 import numpy as np
+import matplotlib.pyplot as plt
 
-# 목표 함수 정의
+# 목표 함수
 def target_function(x):
-    return 2 * x + 3 + np.sin(x)*3*np.sqrt(abs(x)) +np.cos(x+3)
+    return 2 * x + 3 + np.sin(x) * 3 * np.sqrt(abs(x)) + np.cos(x + 3)
 
 # 신경망 모델 정의
 class SimpleNet(nn.Module):
@@ -40,53 +39,65 @@ class SimpleNet(nn.Module):
         super(SimpleNet, self).__init__()
         self.linear = nn.Sequential(
             nn.Linear(1, 10),
-            # nn.ReLU(),
             nn.Tanh(),
-            nn.Linear(10,10),
-            # nn.ReLU(),
+            nn.Linear(10, 10),
             nn.Tanh(),
-            nn.Linear(10,1),
+            nn.Linear(10, 1),
         )
+
     def forward(self, x):
         return self.linear(x)
 
-# 데이터 생성
-x_train = torch.unsqueeze(torch.linspace(-10, 10, 100), dim=1)
-y_train = target_function(x_train)
-
-# 모델, 손실 함수, 옵티마이저 초기화
+# 모델 초기화
 model = SimpleNet()
-criterion = nn.MSELoss()
-optimizer = optim.SGD(model.parameters(), lr=0.01)
-optimizer = optim.Adam(model.parameters(), lr=0.01)
 
-# 학습 루프
-num_epochs = 1000
-for epoch in range(num_epochs):
-    # Forward pass
-    outputs = model(x_train)
-    loss = criterion(outputs, y_train)
+# 데이터 준비
+x = torch.linspace(-10, 10, 1000).view(-1, 1)
+y_true = torch.tensor(target_function(x.numpy()), dtype=torch.float32).view(-1, 1)
 
-    # Backward and optimize
-    optimizer.zero_grad()
-    loss.backward()
-    optimizer.step()
-    if (epoch+1) % (num_epochs//5) == 0:
-        print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}')
+# 학습률
+learning_rate = 0.01
 
-# 학습된 모델로 예측
+# 학습 과정
+for epoch in range(1000):
+    # 순전파
+    y_pred = model(x)
+
+    # 손실 계산
+    loss = nn.MSELoss()(y_pred, y_true)
+
+    # 그래디언트 계산
+    gradients = torch.autograd.grad(loss, model.parameters(), create_graph=True)
+
+    # 가중치 업데이트
+    with torch.no_grad():
+        for param, grad in zip(model.parameters(), gradients):
+            param.data -= learning_rate * grad
+
+    # 로깅
+    if epoch % 200 == 0:
+        print(f"Epoch {epoch}, Loss: {loss.item()}")
+
+# 예측 및 그래프 그리기
+x_train = torch.unsqueeze(torch.linspace(-10, 10, 100), dim=1)
+y_train = torch.tensor(target_function(x_train.numpy()), dtype=torch.float32).view(-1, 1)
 predicted = model(x_train).detach().numpy()
 
 # 목표 함수와 학습 결과 비교를 위한 그래프
 plt.figure(figsize=(10,6))
 plt.plot(x_train.numpy(), y_train.numpy(), label='Target Function', color='blue')
-plt.plot(x_train.numpy(), predicted, label='Model Predictions', color='red')
-plt.legend()
-plt.xlabel('x')
-plt.ylabel('y')
-plt.title('Comparison of Target Function and Model Predictions')
-plt.show()
+plt.plot(x_train.numpy(), predicted, label='Predicted', color='red')
 ```
+
+```hash
+# output
+Epoch 0, Loss: 198.77162170410156
+Epoch 200, Loss: 38.84187316894531
+Epoch 400, Loss: 14.687801361083984
+Epoch 600, Loss: 15.193655967712402
+Epoch 800, Loss: 8.485503196716309
+```
+
 
 ## Retain Graph (DAG)
 
